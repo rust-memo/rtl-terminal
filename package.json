@@ -1,26 +1,70 @@
 {
   "name": "rtl-terminal",
-  "version": "1.1.0",
-  "description": "Terminal web enhanced with full RTL / Arabic support - Windows exe + Linux",
-  "main": "server.js",
+  "version": "1.2.0",
+  "description": "RTL Terminal Desktop - native Windows app with Arabic/RTL support",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build:exe:win": "pkg server.js --targets node18-win-x64 --output dist/RTL-Terminal-win-x64.exe",
-    "build:exe:linux": "pkg server.js --targets node18-linux-x64 --output dist/RTL-Terminal-linux"
+    "desk": "electron electron/main.js",
+    "dist:win": "electron-builder --win portable --x64",
+    "build:exe:win": "pkg server.js --targets node18-win-x64 --output dist/RTL-Terminal-win-x64.exe"
   },
   "pkg": {
-    "assets": ["public/**/*"],
-    "targets": ["node18-win-x64"],
+    "assets": [
+      "public/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
     "outputPath": "dist"
   },
-  "keywords": ["terminal", "rtl", "arabic", "bidi", "xterm", "windows", "exe"],
+  "build": {
+    "appId": "com.rustmemo.rtlterminal",
+    "productName": "RTL Terminal",
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "RTL-Terminal-Desktop-${version}-win-x64.exe"
+    },
+    "portable": {
+      "artifactName": "RTL-Terminal-Desktop-${version}-win-x64.exe"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "public",
+        "to": "public"
+      }
+    ]
+  },
+  "keywords": [
+    "terminal",
+    "rtl",
+    "arabic",
+    "bidi",
+    "xterm",
+    "windows",
+    "exe",
+    "electron",
+    "desktop"
+  ],
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.16.0"
   },
   "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^25.0.0",
     "esbuild": "^0.28.2",
     "pkg": "^5.8.1"
   }
