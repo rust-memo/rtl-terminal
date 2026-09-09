@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTL Terminal — طرفية تدعم العربية</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #0d1117; color: #e6edf3; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 18px; margin: 0; }
+  header h1 small { color: #8b949e; font-weight: normal; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button, select { background: #238636; color: #fff; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  button.ghost { background: #21262d; border: 1px solid #30363d; }
+  button:hover { opacity: .9; }
+  .toggle { display: flex; align-items: center; gap: 6px; background: #21262d; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 14px; }
+  .toggle input { accent-color: #238636; width: 16px; height: 16px; }
+  main { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 12px; max-width: 1100px; margin: 0 auto; }
+  #term-wrap { background: #000; border: 1px solid #30363d; border-radius: 8px; padding: 8px; min-height: 420px; }
+  #term-wrap.rtl-mode .xterm-screen { direction: rtl; text-align: right; }
+  .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 15px; color: #58a6ff; }
+  #cmdline { display: flex; gap: 8px; }
+  #cmd { flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 9px 12px; font-size: 15px; font-family: inherit; }
+  #cmd[dir="rtl"] { text-align: right; }
+  #cmd[dir="ltr"] { text-align: left; }
+  .hint { color: #8b949e; font-size: 13px; margin-top: 8px; line-height: 1.8; }
+  .hint code { background: #21262d; padding: 1px 6px; border-radius: 4px; color: #79c0ff; }
+  #status { font-size: 13px; color: #8b949e; }
+  #status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #f85149; margin-inline-end: 5px; }
+  #status.on .dot { background: #3fb950; }
+  footer { text-align: center; color: #8b949e; font-size: 12px; padding: 14px; }
+  kbd { background: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 1px 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🖥️ RTL Terminal <small>طرفية ويب تدعم العربية / RTL — تعمل على Windows و Linux</small></h1>
+  <div class="controls">
+    <span id="status"><span class="dot"></span><span id="status-t">غير متصل</span></span>
+    <label class="toggle"><input type="checkbox" id="rtl-toggle" checked> RTL / عربي</label>
+    <label class="toggle"><input type="checkbox" id="shape-toggle" checked> تشكيل الحروف</label>
+    <button class="ghost" id="dir-btn">⇄ LTR / RTL</button>
+    <button class="ghost" id="clear-btn">🧹 مسح</button>
+  </div>
+</header>
+<main>
+  <div id="term-wrap"><div id="term"></div></div>
+  <div class="panel">
+    <h2>⌨️ سطر إدخال ذكي (يدعم العربية الكاملة)</h2>
+    <div id="cmdline">
+      <input id="cmd" dir="auto" placeholder="اكتب أمراً هنا… مثال: echo مرحبا بالعالم" autocomplete="off">
+      <button id="send-btn">إرسال ⏎</button>
+    </div>
+    <div class="hint">
+      • الإدخال هنا <code>dir="auto"</code> — العربية تُكتب يمين-ليسار تلقائياً والإنجليزية يسار-يمين.<br>
+      • أو اكتب مباشرة داخل الطرفية السوداء أعلاه.<br>
+      • جرّب: <code>echo مرحبا بالعالم 123 test</code> — الأرقام واللاتينية تبقى بترتيبها الصحيح داخل النص العربي (bidi).<br>
+      • <kbd>Ctrl+L</kbd> مسح • زر <code>⇄</code> يقلب اتجاه الصفحة كاملة.
+    </div>
+  </div>
+</main>
+<footer>RTL-Terminal v1.0 — xterm.js + node-pty + custom bidi shaper • MIT • يعمل على Windows (PowerShell/cmd) و Linux (bash)</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="rtl-bidi.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
