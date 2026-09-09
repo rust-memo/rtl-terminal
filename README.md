@@ -1,69 +1,71 @@
-# 🖥️ RTL-Terminal — طرفية ويب تدعم العربية (RTL)
+# RTL-Terminal v1.1.0 — طرفية ويب تدعم العربية (RTL) + نسخة EXE
 
-Terminal مبني على **xterm.js** مع طبقة RTL مخصصة، يعمل على **Windows و Linux**.
+Terminal مبني على **xterm.js (offline)** مع طبقة RTL مخصصة. يعمل على **Windows و Linux**.
 
-## ✨ المميزات
-- ✅ دعم كامل للعربية / العبرية (RTL) داخل الطرفية
-- ✅ تشكيل الحروف العربية (أشكال أول/وسط/آخر الكلمة + لام-ألف)
-- ✅ خوارزمية BiDi: أرقام ولاتينية تبقى بترتيبها الصحيح داخل النص العربي
-- ✅ لا يكسّر أكواد الألوان ANSI
-- ✅ صندوق إدخال ذكي `dir="auto"` للكتابة المريحة بالعربية
-- ✅ زر ⇄ لقلب اتجاه الصفحة، زر تشكيل الحروف
-- ✅ يعمل على Windows (PowerShell / cmd) و Linux (bash)
+## تحميل نسخة Windows الجاهزة (بدون Node.js)
 
-## 🚀 التشغيل
+من صفحة [Releases](https://github.com/rust-memo/rtl-terminal/releases) حمّل:
 
-### على Windows
-1. ثبّت [Node.js](https://nodejs.org/) (زر LTS)
-2. انسخ مجلد `rtl-terminal` إلى جهازك
-3. دبل-كليك على **`run-windows.bat`**
-4. افتح المتصفح: http://localhost:3000
+| الملف | الوصف |
+|---|---|
+| `RTL-Terminal-win-x64.exe` (~40MB) | **نسخة كاملة — دبل كليك وتشتغل، لا تحتاج Node.js** |
+| `rtl-terminal-v1.1.0-windows.zip` | السورس كامل (يحتاج Node.js) |
 
-للحصول على Shell حقيقي (PowerShell داخل المتصفح):
-```
-npm install node-pty
-npm start
-```
-> بدون `node-pty` يعمل بوضع DEMO (صدى + أمر echo) — مفيد للتجربة.
+**التشغيل:** دبل-كليك على `RTL-Terminal-win-x64.exe` ← يفتح المتصفح تلقائياً على `http://localhost:3000` ← Shell حقيقي (PowerShell/cmd).
 
-### على Linux
+> ملاحظة: أول تشغيل قد يظهر تحذير Windows SmartScreen (ملف غير موقّع) ← اضغط `More info` ثم `Run anyway`.
+
+## المميزات
+- دعم كامل للعربية / العبرية (RTL) داخل الطرفية
+- تشكيل الحروف العربية (أول/وسط/آخر الكلمة + لام-ألف)
+- خوارزمية BiDi: أرقام ولاتينية تبقى بترتيبها الصحيح داخل النص العربي
+- لا يكسّر أكواد الألوان ANSI
+- صندوق إدخال ذكي `dir="auto"` للكتابة المريحة بالعربية
+- زر ⇄ لقلب اتجاه الصفحة
+- يعمل **offline بالكامل** (xterm.js مضمّن في `public/vendor/`)
+- نسخة EXE تفتح المتصفح تلقائياً
+
+## التشغيل من السورس (للمطورين)
+
 ```bash
-cd rtl-terminal
-chmod +x run-linux.sh
-./run-linux.sh
-# أو:
 npm install
 npm start
+# افتح http://localhost:3000
 ```
 
-## 📁 البنية
+بناء EXE بنفسك:
+```bash
+npm install
+npm run build:exe:win    # ينتج dist/RTL-Terminal-win-x64.exe (من Linux أو Windows)
+```
+
+## البنية
 ```
 rtl-terminal/
-├── server.js            # Express + WebSocket + node-pty bridge
-├── package.json
-├── run-windows.bat      # تشغيل Windows (دبل كليك)
-├── run-linux.sh         # تشغيل Linux
-└── public/
-    ├── index.html       # الواجهة (عربي RTL)
-    ├── rtl-bidi.js      # محرك BiDi + تشكيل عربي (أهم ملف)
-    └── app.js           # ربط xterm.js + WebSocket
+├── server.js            # Express + WebSocket + child_process shell (exe-safe, بدون node-pty)
+├── package.json         # pkg config مضمّن
+├── public/
+│   ├── index.html       # الواجهة (عربي RTL)
+│   ├── rtl-bidi.js      # محرك BiDi + تشكيل عربي
+│   ├── app.js           # ربط xterm.js + WebSocket
+│   └── vendor/          # xterm.js + addon-fit + css (offline)
+└── dist/                # نسخة EXE (لا تُرفع على git)
 ```
 
-## 🧠 كيف يدعم RTL؟ (الفكرة التقنية)
+## كيف يدعم RTL؟
 مشكلة xterm.js الأصلية: يعرض الحروف بترتيب التخزين المنطقي (LTR دائماً) ولا يطبّق Unicode Bidi ولا Arabic Shaping.
-
 الحل في `rtl-bidi.js`:
-1. كشف السطور التي تحوي حروف RTL (`\u0590–\u08FF`)
+1. كشف السطور التي تحوي حروف RTL
 2. فصل أكواد ANSI جانباً حتى لا تُكسر الألوان
 3. تقسيم السطر لمقاطع RTL / LTR وإعادة ترتيبها للعرض البصري
-4. تشكيل عربي: استبدال كل حرف بشكله التقديمي الصحيح (isolated/initial/medial/final) + ligature لام-ألف
-5. الإدخال يُرسل للـ shell بالترتيب المنطقي الأصلي (سليم)، والعرض فقط هو المرتب بصرياً
+4. تشكيل عربي + ligature لام-ألف
+5. الإدخال يُرسل للـ shell بالترتيب المنطقي الأصلي (سليم)
 
-## 🧪 جرّب
+## جرّب
 ```
 echo مرحبا بالعالم 123 test
 echo hello مرحبا world
 ```
 
-## 📄 الرخصة
+## الرخصة
 MIT — حر للاستخدام والتعديل.

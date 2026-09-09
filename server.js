@@ -1,117 +1,97 @@
 /**
- * RTL-Terminal Server
- * Works on Windows (powershell/cmd) + Linux (bash)
- * - Express serves public/
- * - WebSocket bridges browser <-> pty
- * - Fallback to echo-mode if node-pty not installed (so it always runs)
+ * RTL-Terminal Server - EXE edition (pkg, CJS)
+ * Shell via child_process. Static via embedded snapshot OR external public/.
+ * No native modules - exe safe.
  */
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const os = require('os');
+const { spawn } = require('child_process');
 const express = require('express');
 const WebSocket = require('ws');
 
+// ---- embedded public files (for pkg snapshot) ----
+const EMBEDDED = {};
+function loadEmbedded() {
+  const files = ['index.html', 'app.js', 'rtl-bidi.js', 'vendor/xterm.js', 'vendor/xterm.css', 'vendor/addon-fit.js'];
+  for (const f of files) {
+    try {
+      const p = path.join(__dirname, 'public', f);
+      if (fs.existsSync(p)) {
+        const buf = fs.readFileSync(p);
+        EMBEDDED['/' + f] = buf;
+        EMBEDDED['/public/' + f] = buf;
+      }
+    } catch (e) {}
+  }
+  try {
+    const snapIndex = path.join(__dirname, 'public', 'index.html');
+    console.log('[rtl] embedded files loaded: ' + Object.keys(EMBEDDED).length + ' (snapshot: ' + snapIndex + ')');
+  } catch (e) {}
+}
+loadEmbedded();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.map': 'application/json' };
 
+// 1) try embedded snapshot first (works inside exe)
+app.use((req, res, next) => {
+  let urlPath = decodeURIComponent(req.path);
+  if (urlPath === '/') urlPath = '/index.html';
+  if (EMBEDDED[urlPath]) {
+    const ext = path.extname(urlPath).toLowerCase();
+    res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+    return res.send(EMBEDDED[urlPath]);
+  }
+  next();
+});
+// 2) fallback: external public/ next to exe or source
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/health', (req, res) => res.json({ ok: true, rtl: true }));
+app.use(express.static(path.join(path.dirname(process.execPath), 'public')));
+app.use(express.static(path.join(process.cwd(), 'public')));
+app.get('/health', (req, res) => res.json({ ok: true, rtl: true, exe: true }));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Try to load node-pty (optional - needed for real shell)
-let pty = null;
-try {
-  pty = require('node-pty');
-  console.log('[rtl-terminal] node-pty loaded - real shell enabled');
-} catch (e) {
-  console.log('[rtl-terminal] node-pty NOT found - running in DEMO echo mode.');
-  console.log('               Install for real shell: npm install node-pty');
-}
-
 function getDefaultShell() {
   if (process.platform === 'win32') {
-    // Prefer PowerShell, fallback to cmd
-    const ps = process.env.SystemRoot + '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-    try { if (fs.existsSync(ps)) return ps; } catch {}
-    return process.env.COMSPEC || 'cmd.exe';
+    const ps = (process.env.SystemRoot || 'C:\\Windows') + '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+    try { if (fs.existsSync(ps)) return { cmd: ps, args: ['-NoLogo', '-NoProfile'] }; } catch (e) {}
+    return { cmd: process.env.COMSPEC || 'cmd.exe', args: [] };
   }
-  return process.env.SHELL || '/bin/bash';
+  return { cmd: process.env.SHELL || '/bin/bash', args: ['-i'] };
 }
 
 wss.on('connection', (ws) => {
   console.log('[ws] client connected');
-  let proc = null;
-
-  if (pty) {
-    const shell = getDefaultShell();
-    const args = shell.toLowerCase().includes('powershell') ? ['-NoLogo'] : [];
-    try {
-      proc = pty.spawn(shell, args, {
-        name: 'xterm-256color',
-        cols: 100,
-        rows: 30,
-        cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
-        env: process.env
-      });
-      proc.onData((data) => {
-        try { ws.send(JSON.stringify({ type: 'data', data })); } catch {}
-      });
-      proc.onExit(({ exitCode }) => {
-        try { ws.send(JSON.stringify({ type: 'exit', code: exitCode })); } catch {}
-      });
-    } catch (err) {
-      console.error('pty spawn failed:', err.message);
-      proc = null;
-    }
-  }
-
-  // DEMO fallback shell (works everywhere, no deps)
-  if (!proc) {
-    ws.send(JSON.stringify({ type: 'data', data: '\x1b[32mRTL-Terminal DEMO mode\x1b[0m\r\n' }));
-    ws.send(JSON.stringify({ type: 'data', data: 'Real shell needs: npm install node-pty\r\n' }));
-    ws.send(JSON.stringify({ type: 'data', data: 'Type anything - it echoes back. Try Arabic: مرحبا بالعالم\r\n$ ' }));
-    let buf = '';
-    ws.on('message', (msg) => {
-      let m; try { m = JSON.parse(msg); } catch { return; }
-      if (m.type === 'resize') return;
-      if (m.type === 'input') {
-        for (const ch of m.data) {
-          if (ch === '\r' || ch === '\n') {
-            ws.send(JSON.stringify({ type: 'data', data: '\r\n' }));
-            const line = buf.trim(); buf = '';
-            if (!line) { ws.send(JSON.stringify({ type: 'data', data: '$ ' })); continue; }
-            // mini commands
-            if (line === 'clear') { ws.send(JSON.stringify({ type: 'data', data: '\x1b[2J\x1b[H$ ' })); continue; }
-            if (line.startsWith('echo ')) {
-              ws.send(JSON.stringify({ type: 'data', data: line.slice(5) + '\r\n$ ' }));
-              continue;
-            }
-            ws.send(JSON.stringify({ type: 'data', data: `echo: ${line}\r\n$ ` }));
-          } else if (ch === '\u007f' || ch === '\b') {
-            if (buf.length) { buf = buf.slice(0, -1); ws.send(JSON.stringify({ type: 'data', data: '\b \b' })); }
-          } else {
-            buf += ch;
-            ws.send(JSON.stringify({ type: 'data', data: ch }));
-          }
-        }
-      }
-    });
-    ws.on('close', () => console.log('[ws] client disconnected (demo)'));
+  const sh = getDefaultShell();
+  let child = null;
+  try {
+    child = spawn(sh.cmd, sh.args, { cwd: os.homedir(), env: process.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false });
+  } catch (err) { console.error('shell spawn failed:', err.message); }
+  if (!child || !child.stdin) {
+    ws.send(JSON.stringify({ type: 'data', data: '\x1b[31mFailed to start shell.\x1b[0m\r\n' }));
+    try { ws.close(); } catch (e) {}
     return;
   }
-
-  // REAL pty bridge
+  child.stdout.on('data', (d) => { try { ws.send(JSON.stringify({ type: 'data', data: d.toString('utf8') })); } catch (e) {} });
+  child.stderr.on('data', (d) => { try { ws.send(JSON.stringify({ type: 'data', data: d.toString('utf8') })); } catch (e) {} });
+  child.on('exit', (code) => { try { ws.send(JSON.stringify({ type: 'data', data: '\r\n\x1b[90m[shell exited ' + code + ']\x1b[0m\r\n' })); } catch (e) {} });
+  child.on('error', (err) => { try { ws.send(JSON.stringify({ type: 'data', data: '\r\n\x1b[31m[shell error: ' + err.message + ']\x1b[0m\r\n' })); } catch (e) {} });
+  ws.send(JSON.stringify({ type: 'data', data: '\x1b[32mRTL-Terminal EXE - ' + sh.cmd + '\x1b[0m\r\n' }));
   ws.on('message', (msg) => {
-    let m; try { m = JSON.parse(msg); } catch { return; }
-    if (m.type === 'input' && proc) proc.write(m.data);
-    if (m.type === 'resize' && proc) { try { proc.resize(m.cols, m.rows); } catch {} }
+    let m; try { m = JSON.parse(msg.toString()); } catch (e) { return; }
+    if (m.type === 'input' && child && child.stdin.writable) { try { child.stdin.write(m.data); } catch (e) {} }
   });
-  ws.on('close', () => { try { proc.kill(); } catch {} console.log('[ws] client disconnected'); });
+  ws.on('close', () => { try { child.kill(); } catch (e) {} console.log('[ws] client disconnected'); });
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  RTL-Terminal running: http://localhost:${PORT}`);
-  console.log(`  Platform: ${process.platform} | Shell: ${getDefaultShell()}\n`);
+  const url = 'http://localhost:' + PORT;
+  console.log('\n  RTL-Terminal EXE running: ' + url);
+  console.log('  Platform: ' + process.platform + '\n');
+  if (process.platform === 'win32') { try { require('child_process').exec('start ' + url); } catch (e) {} }
 });

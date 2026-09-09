@@ -18,7 +18,8 @@
     allowProposedApi: true,
   });
   const fit = new FitAddon.FitAddon();
-  term.loadAddon(fit);
+  if (fit && typeof term.loadAddon === 'function') term.loadAddon(fit);
+  else if (fit && typeof fit.activate === 'function') fit.activate(term);
   term.open(document.getElementById('term'));
   fit.fit();
   window.addEventListener('resize', () => { try { fit.fit(); } catch {} });

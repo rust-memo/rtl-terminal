@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RTL Terminal — طرفية تدعم العربية</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css">
+<link rel="stylesheet" href="vendor/xterm.css">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #0d1117; color: #e6edf3; }
@@ -62,10 +62,10 @@
     </div>
   </div>
 </main>
-<footer>RTL-Terminal v1.0 — xterm.js + node-pty + custom bidi shaper • MIT • يعمل على Windows (PowerShell/cmd) و Linux (bash)</footer>
+<footer>RTL-Terminal v1.0 — xterm.js (offline) + custom bidi shaper • MIT • يعمل على Windows (PowerShell/cmd) و Linux (bash)</footer>
 
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-fit.js"></script>
 <script src="rtl-bidi.js"></script>
 <script src="app.js"></script>
 </body>
