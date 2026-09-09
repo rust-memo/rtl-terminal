@@ -1,6 +1,6 @@
 {
   "name": "rtl-terminal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "RTL Terminal Desktop - native Windows app with Arabic/RTL support",
   "main": "electron/main.js",
   "scripts": {
@@ -26,7 +26,8 @@
       "target": [
         "portable"
       ],
-      "artifactName": "RTL-Terminal-Desktop-${version}-win-x64.exe"
+      "artifactName": "RTL-Terminal-Desktop-${version}-win-x64.exe",
+      "icon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "RTL-Terminal-Desktop-${version}-win-x64.exe"
@@ -37,12 +38,17 @@
     "files": [
       "electron/**/*",
       "public/**/*",
+      "build/icon.*",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "public",
         "to": "public"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "build/icon.png"
       }
     ]
   },

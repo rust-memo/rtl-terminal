@@ -75,19 +75,30 @@ function startBackend() {
 // ---------- window ----------
 let win = null;
 function createWindow() {
-  win = new BrowserWindow({
+  const path = require('path');
+  const fs = require('fs');
+  const winOpts = {
     width: 1100,
     height: 750,
     minWidth: 700,
     minHeight: 500,
-    title: 'RTL Terminal',
+    title: 'RTL Terminal — طرفية تدعم العربية',
     backgroundColor: '#0d1117',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
     },
-  });
+  };
+  // custom icon when available (dev + packaged)
+  const iconCandidates = [
+    path.join(__dirname, '..', 'build', 'icon.png'),
+    path.join(process.resourcesPath || '', 'build', 'icon.png'),
+  ];
+  for (const p of iconCandidates) {
+    try { if (fs.existsSync(p)) { winOpts.icon = p; break; } } catch (e) {}
+  }
+  win = new BrowserWindow(winOpts);
   win.loadURL('http://127.0.0.1:' + PORT + '/');
   win.on('closed', () => { win = null; });
 }
